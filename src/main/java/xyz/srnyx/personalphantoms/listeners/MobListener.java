@@ -57,8 +57,13 @@ public class MobListener extends AnnoyingListener {
      */
     @EventHandler
     public void onPlayerJoin(@NotNull PlayerJoinEvent event) {
-        // Reset statistic
         final Player player = event.getPlayer();
-        if (plugin.isWhitelistedWorld(player.getWorld()) && !plugin.hasPhantomsEnabled(player)) PersonalPhantoms.resetStatistic(player);
+        if (!plugin.isWhitelistedWorld(player.getWorld())) return;
+
+        if (!plugin.hasPhantomsEnabled(player)) {
+            // Disabled → prevent phantom attacks
+            PersonalPhantoms.resetStatistic(player);
+        }
+        // else: do nothing → vanilla logic will handle spawning if player has >=1h without sleep
     }
 }

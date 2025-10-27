@@ -81,7 +81,7 @@ public class PersonalPhantoms extends AnnoyingPlugin {
     public boolean hasPhantomsEnabled(@NotNull StringData data) {
         return data.getOptional(KEY)
                 .map(value -> value.equals("true"))
-                .orElse(!config.def);
+                .orElse(config.def);
     }
 
     public boolean hasPhantomsEnabled(@NotNull OfflinePlayer player) {

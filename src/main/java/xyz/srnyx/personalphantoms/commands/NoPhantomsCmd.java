@@ -57,11 +57,12 @@ public class NoPhantomsCmd extends AnnoyingCommand {
         // But, commands such as "/phantoms disable" and "/nophantoms disable" mean different things to the player
         final boolean inverse = sender.label != null && sender.label.equalsIgnoreCase("nophantoms");
 
+// inside NoPhantomsCmd.java — replace the single-arg handling block for toggle/enable/disable
         if (length == 1) {
             // get
             if (sender.argEquals(0, "get")) {
                 if (sender.checkPlayer()) new AnnoyingMessage(plugin, "get.self")
-                        .replace("%status%", !plugin.hasPhantomsEnabled(sender.getPlayer()), DefaultReplaceType.BOOLEAN)
+                        .replace("%status%", plugin.hasPhantomsEnabled(sender.getPlayer()), DefaultReplaceType.BOOLEAN)
                         .send(sender);
                 return;
             }
@@ -85,8 +86,19 @@ public class NoPhantomsCmd extends AnnoyingCommand {
                     }
                 }
 
+                // Determine desired state explicitly:
+                Boolean desired;
+                if (sender.argEquals(0, "toggle")) {
+                    desired = null; // allow editKey to toggle
+                } else if (sender.argEquals(0, "enable")) {
+                    desired = Boolean.TRUE; // enable phantoms
+                } else { // "disable"
+                    desired = Boolean.FALSE; // disable phantoms
+                }
+
                 // Edit
-                final boolean newStatus = editKey(player, sender.argEquals(0, "toggle") ? null : sender.argEquals(0, "enable") ^ inverse);
+                final boolean newStatus = editKey(player, desired);
+                // newStatus should be true when phantoms are enabled, false when disabled
                 new AnnoyingMessage(plugin, "nophantoms.self")
                         .replace("%status%", newStatus, DefaultReplaceType.BOOLEAN)
                         .send(sender);
@@ -113,7 +125,7 @@ public class NoPhantomsCmd extends AnnoyingCommand {
         if (sender.argEquals(0, "get")) {
             for (final OfflinePlayer target : targets) new AnnoyingMessage(plugin, "get.other")
                     .replace("%target%", target.getName())
-                    .replace("%status%", !plugin.hasPhantomsEnabled(target), DefaultReplaceType.BOOLEAN)
+                    .replace("%status%", plugin.hasPhantomsEnabled(target), DefaultReplaceType.BOOLEAN)
                     .send(sender);
             return;
         }
@@ -171,21 +183,25 @@ public class NoPhantomsCmd extends AnnoyingCommand {
      * @return                  the new status of the key (true if phantoms enabled, false if disabled)
      */
     private boolean editKey(@NotNull OfflinePlayer offline, @Nullable Boolean enablePhantoms) {
-        // Update key status
         final StringData data = new StringData(plugin, offline);
-        if (enablePhantoms == null) enablePhantoms = !plugin.hasPhantomsEnabled(data); // toggle
-        data.set(PersonalPhantoms.KEY, !enablePhantoms);
 
-        // Update statistic
+        if (enablePhantoms == null) {
+            // toggle
+            enablePhantoms = !plugin.hasPhantomsEnabled(data);
+        }
+
+        data.set(PersonalPhantoms.KEY, enablePhantoms);
+
         final Player online = offline.getPlayer();
         if (online != null && plugin.isWhitelistedWorld(online.getWorld())) {
             if (enablePhantoms) {
-                // Set statistic to 1 hour (so phantoms will attack)
+                // Player explicitly enabled → force phantom attack immediately
                 online.setStatistic(Statistic.TIME_SINCE_REST, 72000);
             } else {
-                // Reset statistic (so phantoms won't attack)
+                // Player disabled → never attack
                 PersonalPhantoms.resetStatistic(online);
             }
+            // Default players (who never used command) are untouched
         }
 
         return enablePhantoms;
